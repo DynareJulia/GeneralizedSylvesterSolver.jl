@@ -1,4 +1,4 @@
-import GeneralizedSylvesterSolver: IPlusAtKronBWs, solvi_real_eliminate!,
+import GeneralizedSylvesterSolver: GeneralizedSylvesterWs, solvi_real_eliminate!,
     QuasiUpperTriangular, solve1!, transformation1, transform2,
     generalized_sylvester_solver!, solvi_complex_eliminate!, solviip_complex_eliminate!,
     solviip, solviip2, solviip_real_eliminate!
@@ -343,7 +343,7 @@ function test1(m, n, order)
     r = 1.0
     nd = m*n^(order-1)
     
-    ws = IPlusAtKronBWs(m, m, n, order)
+    ws = GeneralizedSylvesterWs(m, m, n, order)
 
     @test kron_power(a,1) == a
     @test kron_power(a,3) ≈ kron(kron(a,a),a) 

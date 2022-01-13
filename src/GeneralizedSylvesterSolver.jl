@@ -1,16 +1,16 @@
 module GeneralizedSylvesterSolver
 ###
 # solving a x + b x (c ⊗ c ⊗ ... ⊗ c) = d
-# using (I - s^T ⊗ s^T ⊗ ... \otimes s^T \otimes t)x = d
+# using (I + s^T ⊗ s^T ⊗ ... \otimes s^T \otimes t)x = d
 ###
 
 using QuasiTriangular
 using FastLapackInterface
 using KroneckerTools
 using LinearAlgebra
-export IPlusAtKronBWs, generalized_sylvester_solver!
+export GeneralizedSylvesterWs, generalized_sylvester_solver!
 
-struct IPlusAtKronBWs
+struct GeneralizedSylvesterWs
     ma::Int64
     mb::Int64
     b1::Matrix{Float64}
@@ -26,7 +26,7 @@ struct IPlusAtKronBWs
     linsolve_ws::LinSolveWs
     dgees_ws_b::DgeesWs
     dgees_ws_c::DgeesWs
-    function IPlusAtKronBWs(ma::Int64, mb::Int64, mc::Int64, order::Int64)
+    function GeneralizedSylvesterWs(ma::Int64, mb::Int64, mc::Int64, order::Int64)
         if mb != ma
             DimensionMismatch("a has $ma rows but b has $mb rows")
         end
@@ -48,7 +48,7 @@ struct IPlusAtKronBWs
 end
 
 function generalized_sylvester_solver!(a::AbstractMatrix,b::AbstractMatrix,c::AbstractMatrix,
-                                   d::AbstractMatrix,order::Int64,ws::IPlusAtKronBWs)
+                                   d::AbstractMatrix,order::Int64,ws::GeneralizedSylvesterWs)
     copy!(ws.b1,b)
     copy!(ws.c1,c)
     linsolve_core!(a, ws.b1, ws.linsolve_ws)
@@ -67,14 +67,14 @@ function generalized_sylvester_solver!(a::AbstractMatrix,b::AbstractMatrix,c::Ab
 end
 
 
-function solver!(t::QuasiUpperTriangular,s::QuasiUpperTriangular,d::AbstractVector,order::Int64,ws::IPlusAtKronBWs)
+function solver!(t::QuasiUpperTriangular,s::QuasiUpperTriangular,d::AbstractVector,order::Int64,ws::GeneralizedSylvesterWs)
     s2 = QuasiUpperTriangular(s*s)
     t2 = QuasiUpperTriangular(t*t)
     solve1!(1.0,order,t,t2,s,s2,d,ws)
     d
 end
 
-function solve1!(r::Float64, depth::Int64, t::AbstractArray{Float64,2}, t2::AbstractArray{Float64,2}, s::AbstractArray{Float64,2}, s2::AbstractArray{Float64,2}, d::AbstractVector{Float64}, ws::IPlusAtKronBWs)
+function solve1!(r::Float64, depth::Int64, t::AbstractArray{Float64,2}, t2::AbstractArray{Float64,2}, s::AbstractArray{Float64,2}, s2::AbstractArray{Float64,2}, d::AbstractVector{Float64}, ws::GeneralizedSylvesterWs)
     m = size(t,2)
     n = size(s,1)
     if depth == 0
@@ -112,13 +112,13 @@ end
 """
 solvi_real_eliminate!(i::Int64, n::Int64, nd::Int64, drange::UnitRange{Int64},
                       depth::Int64, r::Float64, t::QuasiUpperTriangular, s::QuasiUpperTriangular,
-                      d::AbstractVector, ws::IPlusAtKronBWs)
+                      d::AbstractVector, ws::GeneralizedSylvesterWs)
     updates d[k] with d[k] - ∑_{j=i+1}^n r*s[i, j]*(s ⊗ s ⊗ ... ⊗ s ⊗ t)*d with
     depth occurences of s
 """
 function solvi_real_eliminate!(i::Int64, n::Int64, nd::Int64, drange::UnitRange{Int64},
                                depth::Int64, r::Float64, t::QuasiUpperTriangular, s::QuasiUpperTriangular,
-                               d::AbstractVector, ws::IPlusAtKronBWs)
+                               d::AbstractVector, ws::GeneralizedSylvesterWs)
     work1 = ws.work1
     work2 = ws.work2
     work3 = ws.work3
@@ -135,7 +135,7 @@ end
 
 function solvi_complex_eliminate!(i::Int64,n::Int64,nd::Int64,drange::UnitRange{Int64},
                                   depth::Int64,r::Float64,t::QuasiUpperTriangular,s::QuasiUpperTriangular,
-                                  d::AbstractVector,ws::IPlusAtKronBWs)
+                                  d::AbstractVector,ws::GeneralizedSylvesterWs)
     work1 = ws.work1
     work2 = ws.work2
     work3 = ws.work3
@@ -155,7 +155,7 @@ end
 
 function solvii(alpha::Float64,beta1::Float64,beta2::Float64,depth::Int64,
                 t::QuasiUpperTriangular,t2::QuasiUpperTriangular,s::QuasiUpperTriangular,
-                s2::QuasiUpperTriangular,d::AbstractVector,ws::IPlusAtKronBWs)
+                s2::QuasiUpperTriangular,d::AbstractVector,ws::GeneralizedSylvesterWs)
     m = size(t,2)
     n = size(s,1)
     nd = m*n^depth
@@ -168,7 +168,7 @@ end
 
 function transformation1(a::Float64,b1::Float64,b2::Float64,depth::Int64,
                          t::QuasiUpperTriangular,s::QuasiUpperTriangular,
-                         d::AbstractVector,ws::IPlusAtKronBWs)
+                         d::AbstractVector,ws::GeneralizedSylvesterWs)
     m = size(t, 2)
     n = size(s, 1)
     nd = m*n^depth
@@ -188,7 +188,7 @@ end
 diag_zero_sq = 1e-30
 
 function solviip(alpha::Float64,beta::Float64,depth::Int64,t::QuasiUpperTriangular,t2::QuasiUpperTriangular,
-                 s::QuasiUpperTriangular,s2::QuasiUpperTriangular,d::AbstractVector,ws::IPlusAtKronBWs)
+                 s::QuasiUpperTriangular,s2::QuasiUpperTriangular,d::AbstractVector,ws::GeneralizedSylvesterWs)
     m = size(t,2)
     n = size(s,1)
     if beta*beta < diag_zero_sq
@@ -234,7 +234,7 @@ end
 function solviip_real_eliminate!(i::Int64,n::Int64,nd::Int64,drange::UnitRange{Int64},
                                  depth::Int64,alpha::Float64,beta::Float64,t::QuasiUpperTriangular,
                                  t2::QuasiUpperTriangular,s::QuasiUpperTriangular,
-                                 s2::QuasiUpperTriangular,d::AbstractVector,ws::IPlusAtKronBWs)
+                                 s2::QuasiUpperTriangular,d::AbstractVector,ws::GeneralizedSylvesterWs)
     y1 = view(ws.work1,drange)
     y2 = view(ws.work1,drange .+ nd)
     copyto!(y1,1,d,drange[1],nd)
@@ -255,7 +255,7 @@ end
 
 function solviip2(alpha::Float64,beta::Float64,gamma::Float64,delta1::Float64,delta2::Float64,
                   depth::Int64,t::QuasiUpperTriangular,t2::QuasiUpperTriangular,
-                  s::QuasiUpperTriangular,s2::QuasiUpperTriangular,d::AbstractVector,ws::IPlusAtKronBWs)
+                  s::QuasiUpperTriangular,s2::QuasiUpperTriangular,d::AbstractVector,ws::GeneralizedSylvesterWs)
     m = size(t,2)
     n = size(s,1)
     aspds = alpha*alpha + beta*beta
@@ -280,7 +280,7 @@ end
 
 function transform2(alpha::Float64, beta::Float64, gamma::Float64, delta1::Float64, delta2::Float64,
                     nd::Int64, depth::Int64, t::QuasiUpperTriangular, t2::QuasiUpperTriangular,
-                    s::QuasiUpperTriangular, s2::QuasiUpperTriangular, d::AbstractVector, ws::IPlusAtKronBWs)
+                    s::QuasiUpperTriangular, s2::QuasiUpperTriangular, d::AbstractVector, ws::GeneralizedSylvesterWs)
     d1 = ws.work1
     kron_at_kron_b_mul_c!(d1,1,s,depth-1,t,d,1,ws.work2,ws.work3,1)
     kron_at_kron_b_mul_c!(d1,nd+1,s,depth-1,t,d,nd+1,ws.work2,ws.work3,1)
@@ -321,7 +321,7 @@ The function updates d[i*nd+1:n*nd]
 """
 function solviip_complex_eliminate!(i::Int64,n::Int64,nd::Int64,drange::UnitRange{Int64},depth::Int64,
                                     alpha::Float64,beta::Float64,t::QuasiUpperTriangular,t2::QuasiUpperTriangular,
-                                    s::QuasiUpperTriangular,s2::QuasiUpperTriangular,d::AbstractVector,ws::IPlusAtKronBWs)
+                                    s::QuasiUpperTriangular,s2::QuasiUpperTriangular,d::AbstractVector,ws::GeneralizedSylvesterWs)
     y11 = view(ws.work1,drange)
     y12 = view(ws.work1, drange .+ nd)
     copyto!(y11,1,d,drange[1],nd)
