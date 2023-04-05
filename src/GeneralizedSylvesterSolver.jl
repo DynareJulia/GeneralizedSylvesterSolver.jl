@@ -8,6 +8,7 @@ using QuasiTriangular
 using FastLapackInterface
 using KroneckerTools
 using LinearAlgebra
+
 export GeneralizedSylvesterWs, generalized_sylvester_solver!
 
 struct GeneralizedSylvesterWs
@@ -23,9 +24,9 @@ struct GeneralizedSylvesterWs
     work2::Vector{Float64}
     work3::Vector{Float64}
     result::Matrix{Float64}
-    linsolve_ws::LinSolveWs
-    dgees_ws_b::DgeesWs
-    dgees_ws_c::DgeesWs
+    linsolve::LUWs
+    schur_b::SchurWs
+    schur_c::SchurWs
     function GeneralizedSylvesterWs(ma::Int64, mb::Int64, mc::Int64, order::Int64)
         if mb != ma
             DimensionMismatch("a has $ma rows but b has $mb rows")
@@ -36,14 +37,14 @@ struct GeneralizedSylvesterWs
         vs_c = Matrix{Float64}(undef, mc,mc)
         s2 = QuasiUpperTriangular(Matrix{Float64}(undef, mc,mc))
         t2 = QuasiUpperTriangular(Matrix{Float64}(undef, mb,mb))
-        linsolve_ws = LinSolveWs(ma)
-        dgees_ws_b = DgeesWs(mb)
-        dgees_ws_c = DgeesWs(mc)
+        linsolve = LUWs(ma)
+        schur_b = SchurWs(b1)
+        schur_c = SchurWs(c1)
         work1 = Vector{Float64}(undef, ma*mc^order)
         work2 = Vector{Float64}(undef, ma*mc^order)
         work3 = Vector{Float64}(undef, ma*mc^order)
         result = Matrix{Float64}(undef, ma,mc^order)
-        new(ma, mb, b1, c1, vs_b, vs_c, s2, t2, work1, work2, work3, result, linsolve_ws, dgees_ws_b, dgees_ws_c)
+        new(ma, mb, b1, c1, vs_b, vs_c, s2, t2, work1, work2, work3, result, linsolve, schur_b, schur_c)
     end
 end
 
@@ -51,19 +52,32 @@ function generalized_sylvester_solver!(a::AbstractMatrix,b::AbstractMatrix,c::Ab
                                    d::AbstractMatrix,order::Int64,ws::GeneralizedSylvesterWs)
     copy!(ws.b1,b)
     copy!(ws.c1,c)
-    linsolve_core!(a, ws.b1, ws.linsolve_ws)
-    linsolve_core_no_lu!(a, d, ws.linsolve_ws)
-    dgees!(ws.dgees_ws_b,ws.b1)
-    dgees!(ws.dgees_ws_c,ws.c1)
+    ws_a = copy(a) # avoid mutating inputs
+
+    # linsolve_core!(a, ws.b1, ws.linsolve_ws)
+    factors = LinearAlgebra.LU( LAPACK.getrf!(ws.linsolve, ws_a)... )
+    ldiv!(factors, ws.b1) #confirmed
+
+    # linsolve_core_no_lu!(a, d, ws.linsolve_ws)
+    factors = LinearAlgebra.LU( LAPACK.getrf!(ws.linsolve, ws_a)... )
+    ldiv!(factors, d) #confirmed
+    
+    # dgees!(ws.dgees_ws_b, ws.b1)
+    Schur(LAPACK.gees!(ws.schur_b, 'V', ws.b1)...) #confirmed
+    # dgees!(ws.dgees_ws_c, ws.c1)
+    Schur(LAPACK.gees!(ws.schur_c, 'V', ws.c1)...) #confirmed
+
     t = QuasiUpperTriangular(ws.b1)
-    A_mul_B!(ws.t2,t,t)
+    mul!(ws.t2,t,t) #confirmed
     s = QuasiUpperTriangular(ws.c1)
-    A_mul_B!(ws.s2,s,s)
-    at_mul_b_kron_c!(ws.result, ws.dgees_ws_b.vs, d, ws.dgees_ws_c.vs, order, ws.work2, ws.work3)
-    copy!(d,ws.result)
+    mul!(ws.s2,s,s) #confirmed
+    #confirmed as  ws.result = ws.dgees_ws_b.vs' * d * kron(ws.dgees_ws_c.vs, ws.dgees_ws_c.vs)
+    at_mul_b_kron_c!(ws.result, ws.schur_b.vs, d, ws.schur_c.vs, order, ws.work2, ws.work3)
+    copy!(d, ws.result)
+
     solve1!(1.0, order, t, ws.t2, s, ws.s2, vec(d), ws)
-    a_mul_b_kron_ct!(ws.result, ws.dgees_ws_b.vs, d, ws.dgees_ws_c.vs, order, ws.work2, ws.work3)
-    copy!(d,reshape(ws.result, size(a, 1), size(c, 2)^order))
+    a_mul_b_kron_ct!(ws.result, ws.schur_b.vs, d, ws.schur_c.vs, order, ws.work2, ws.work3)
+    copy!(d, reshape(ws.result, size(a, 1), size(c, 2)^order))
 end
 
 

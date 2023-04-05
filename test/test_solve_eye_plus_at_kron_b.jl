@@ -275,24 +275,25 @@ solver!(t,s,d,order,ws)
 d_target = (I(n^(order+1)) + kron(s',kron(kron(s',s'),t)))\d_orig
 @test d ≈ d_target
 
+end
 
+@testset verbose=true "GeneralizedSylvesterSolver" begin
 n1 = 4
 n2 = 3
 a = randn(n1,n1)
 b = randn(n1,n1)
 c = randn(n2,n2)
 order = 2
-ws = EyePlusAtKronBWs(n1,n1,n2,order)
+ws = GeneralizedSylvesterWs(n1,n1,n2,order)
 d = randn(n1,n2^order)
 a_orig = copy(a)
 b_orig = copy(b)
 c_orig = copy(c)
 d_orig = copy(d)
 
-generalized_sylvester_solver!(a,b,c,vec(d),2,ws)
+generalized_sylvester_solver!(a,b,c,d,order,ws)
 @test a_orig*d + b_orig*d*kron(c_orig,c_orig) ≈ d_orig
 @test d ≈ reshape((kron(I(n2^order),a_orig) + kron(kron(c_orig',c_orig'),b_orig))\vec(d_orig),n1,n2^order)
-end
 
 function f(t,s,d,order,ws)
     for i = 1:100
@@ -491,3 +492,4 @@ end
 n=6
 test1(n,n,2)
 test1(n,n,2)
+end
