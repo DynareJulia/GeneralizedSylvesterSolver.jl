@@ -24,9 +24,15 @@ struct GeneralizedSylvesterWs
     work2::Vector{Float64}
     work3::Vector{Float64}
     result::Matrix{Float64}
+<<<<<<< Updated upstream
     linsolve::LUWs
     schur_b::SchurWs
     schur_c::SchurWs
+=======
+    linsolve_ws::LUWs
+    dgees_ws_b::SchurWs
+    dgees_ws_c::SchurWs
+>>>>>>> Stashed changes
     function GeneralizedSylvesterWs(ma::Int64, mb::Int64, mc::Int64, order::Int64)
         if mb != ma
             DimensionMismatch("a has $ma rows but b has $mb rows")
@@ -37,9 +43,15 @@ struct GeneralizedSylvesterWs
         vs_c = Matrix{Float64}(undef, mc,mc)
         s2 = QuasiUpperTriangular(Matrix{Float64}(undef, mc,mc))
         t2 = QuasiUpperTriangular(Matrix{Float64}(undef, mb,mb))
+<<<<<<< Updated upstream
         linsolve = LUWs(ma)
         schur_b = SchurWs(b1)
         schur_c = SchurWs(c1)
+=======
+        linsolve_ws = LUWs(ma)
+        dgees_ws_b = SchurWs(vs_b)
+        dgees_ws_c = SchurWs(vs_c)
+>>>>>>> Stashed changes
         work1 = Vector{Float64}(undef, ma*mc^order)
         work2 = Vector{Float64}(undef, ma*mc^order)
         work3 = Vector{Float64}(undef, ma*mc^order)
@@ -52,6 +64,7 @@ function generalized_sylvester_solver!(a::AbstractMatrix,b::AbstractMatrix,c::Ab
                                    d::AbstractMatrix,order::Int64,ws::GeneralizedSylvesterWs)
     copy!(ws.b1,b)
     copy!(ws.c1,c)
+<<<<<<< Updated upstream
     ws_a = copy(a) # avoid mutating inputs
 
     # linsolve_core!(a, ws.b1, ws.linsolve_ws)
@@ -67,14 +80,27 @@ function generalized_sylvester_solver!(a::AbstractMatrix,b::AbstractMatrix,c::Ab
     # dgees!(ws.dgees_ws_c, ws.c1)
     Schur(LAPACK.gees!(ws.schur_c, 'V', ws.c1)...) #confirmed
 
+=======
+    linsolve_core!(a, ws.b1, ws.linsolve_ws)
+    linsolve_core_no_lu!(a, d, ws.linsolve_ws)
+    gees!(ws.dgees_ws_b,ws.b1)
+    gees!(ws.dgees_ws_c,ws.c1)
+>>>>>>> Stashed changes
     t = QuasiUpperTriangular(ws.b1)
     mul!(ws.t2,t,t) #confirmed
     s = QuasiUpperTriangular(ws.c1)
+<<<<<<< Updated upstream
     mul!(ws.s2,s,s) #confirmed
     #confirmed as  ws.result = ws.dgees_ws_b.vs' * d * kron(ws.dgees_ws_c.vs, ws.dgees_ws_c.vs)
     at_mul_b_kron_c!(ws.result, ws.schur_b.vs, d, ws.schur_c.vs, order, ws.work2, ws.work3)
     copy!(d, ws.result)
 
+=======
+    A_mul_B!(ws.s2,s,s)
+    at_mul_b_kron_c!(ws.result, ws.dgees_ws_b.vs, d, ws.dgees_ws_c.vs, order, ws.work2, ws.work3)
+    copy!(d,ws.result)
+    @show d
+>>>>>>> Stashed changes
     solve1!(1.0, order, t, ws.t2, s, ws.s2, vec(d), ws)
     a_mul_b_kron_ct!(ws.result, ws.schur_b.vs, d, ws.schur_c.vs, order, ws.work2, ws.work3)
     copy!(d, reshape(ws.result, size(a, 1), size(c, 2)^order))
@@ -206,13 +232,23 @@ function solviip(alpha::Float64,beta::Float64,depth::Int64,t::QuasiUpperTriangul
     m = size(t,2)
     n = size(s,1)
     if beta*beta < diag_zero_sq
+        @show "OK100"
         solve1!(alpha,depth,t,t2,s,s2,d,ws)
         solve1!(alpha,depth,t,t2,s,s2,d,ws)
         return
     end
 
     if depth == 0
+        @show "OK0"
+        @show size(t), size(d)
+        d_orig = copy(d)
+        @show d
         I_plus_rA_plus_sB_ldiv_C!(2*alpha,alpha*alpha+beta*beta,t,t2,d)
+        @show d
+        @show d_orig
+        nt = size(t, 1)
+        @show d[1:nt] - (I(nt) + 2*alpha*t + (alpha*alpha+beta*beta)*t2)\d_orig[1:n]
+        @show d
     else
         nd = m*n^(depth-1)
         nd2 = 2*nd
@@ -221,6 +257,7 @@ function solviip(alpha::Float64,beta::Float64,depth::Int64,t::QuasiUpperTriangul
         i = 1
         while i <= n
             if i == n || s[i+1,i] == 0
+                @show "OK1"
                 dv = view(d,drange1)
                 if s[i,i]*s[i,i]*(alpha*alpha+beta*beta) > diag_zero_sq
                     solviip(s[i,i]*alpha,s[i,i]*beta,depth-1,t,t2,s,s2,dv,ws)
@@ -232,6 +269,7 @@ function solviip(alpha::Float64,beta::Float64,depth::Int64,t::QuasiUpperTriangul
                 drange2 = drange2 .+ nd
                 i += 1
             else
+                @show "OK2"
                 dv = view(d,drange2)
                 solviip2(alpha,beta,s[i,i],s[i+1,i],s[i,i+1],depth,t,t2,s,s2,dv,ws)
                 if i < n - 1
