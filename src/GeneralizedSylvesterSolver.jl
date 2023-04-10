@@ -24,15 +24,9 @@ struct GeneralizedSylvesterWs
     work2::Vector{Float64}
     work3::Vector{Float64}
     result::Matrix{Float64}
-<<<<<<< Updated upstream
     linsolve::LUWs
     schur_b::SchurWs
     schur_c::SchurWs
-=======
-    linsolve_ws::LUWs
-    dgees_ws_b::SchurWs
-    dgees_ws_c::SchurWs
->>>>>>> Stashed changes
     function GeneralizedSylvesterWs(ma::Int64, mb::Int64, mc::Int64, order::Int64)
         if mb != ma
             DimensionMismatch("a has $ma rows but b has $mb rows")
@@ -43,15 +37,9 @@ struct GeneralizedSylvesterWs
         vs_c = Matrix{Float64}(undef, mc,mc)
         s2 = QuasiUpperTriangular(Matrix{Float64}(undef, mc,mc))
         t2 = QuasiUpperTriangular(Matrix{Float64}(undef, mb,mb))
-<<<<<<< Updated upstream
         linsolve = LUWs(ma)
         schur_b = SchurWs(b1)
         schur_c = SchurWs(c1)
-=======
-        linsolve_ws = LUWs(ma)
-        dgees_ws_b = SchurWs(vs_b)
-        dgees_ws_c = SchurWs(vs_c)
->>>>>>> Stashed changes
         work1 = Vector{Float64}(undef, ma*mc^order)
         work2 = Vector{Float64}(undef, ma*mc^order)
         work3 = Vector{Float64}(undef, ma*mc^order)
@@ -64,7 +52,6 @@ function generalized_sylvester_solver!(a::AbstractMatrix,b::AbstractMatrix,c::Ab
                                    d::AbstractMatrix,order::Int64,ws::GeneralizedSylvesterWs)
     copy!(ws.b1,b)
     copy!(ws.c1,c)
-<<<<<<< Updated upstream
     ws_a = copy(a) # avoid mutating inputs
 
     # linsolve_core!(a, ws.b1, ws.linsolve_ws)
@@ -80,27 +67,14 @@ function generalized_sylvester_solver!(a::AbstractMatrix,b::AbstractMatrix,c::Ab
     # dgees!(ws.dgees_ws_c, ws.c1)
     Schur(LAPACK.gees!(ws.schur_c, 'V', ws.c1)...) #confirmed
 
-=======
-    linsolve_core!(a, ws.b1, ws.linsolve_ws)
-    linsolve_core_no_lu!(a, d, ws.linsolve_ws)
-    gees!(ws.dgees_ws_b,ws.b1)
-    gees!(ws.dgees_ws_c,ws.c1)
->>>>>>> Stashed changes
     t = QuasiUpperTriangular(ws.b1)
     mul!(ws.t2,t,t) #confirmed
     s = QuasiUpperTriangular(ws.c1)
-<<<<<<< Updated upstream
     mul!(ws.s2,s,s) #confirmed
     #confirmed as  ws.result = ws.dgees_ws_b.vs' * d * kron(ws.dgees_ws_c.vs, ws.dgees_ws_c.vs)
     at_mul_b_kron_c!(ws.result, ws.schur_b.vs, d, ws.schur_c.vs, order, ws.work2, ws.work3)
     copy!(d, ws.result)
 
-=======
-    A_mul_B!(ws.s2,s,s)
-    at_mul_b_kron_c!(ws.result, ws.dgees_ws_b.vs, d, ws.dgees_ws_c.vs, order, ws.work2, ws.work3)
-    copy!(d,ws.result)
-    @show d
->>>>>>> Stashed changes
     solve1!(1.0, order, t, ws.t2, s, ws.s2, vec(d), ws)
     a_mul_b_kron_ct!(ws.result, ws.schur_b.vs, d, ws.schur_c.vs, order, ws.work2, ws.work3)
     copy!(d, reshape(ws.result, size(a, 1), size(c, 2)^order))
@@ -319,12 +293,12 @@ function solviip2(alpha::Float64,beta::Float64,gamma::Float64,delta1::Float64,de
         transform2(alpha, beta, gamma, -delta1, -delta2, nd, depth, t, t2, s, s2, d,ws)
 
         delta = sqrt(-delta1*delta2)
-	a1 = alpha*gamma - beta*delta
-	b1 = alpha*delta + gamma*beta
-	a2 = alpha*gamma + beta*delta
-	b2 = alpha*delta - gamma*beta
-	solviip(a2, b2, depth-1, t, t2, s, s2, dv1, ws);
-	solviip(a1, b1, depth-1, t, t2, s, s2, dv1, ws);
+	    a1 = alpha*gamma - beta*delta
+	    b1 = alpha*delta + gamma*beta
+	    a2 = alpha*gamma + beta*delta
+	    b2 = alpha*delta - gamma*beta
+	    solviip(a2, b2, depth-1, t, t2, s, s2, dv1, ws);
+	    solviip(a1, b1, depth-1, t, t2, s, s2, dv1, ws);
         solviip(a2, b2, depth-1, t, t2, s, s2, dv2, ws);
         solviip(a1, b1, depth-1, t, t2, s, s2, dv2, ws);
     end
