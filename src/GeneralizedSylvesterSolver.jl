@@ -221,7 +221,7 @@ function solviip(alpha::Float64,beta::Float64,depth::Int64,t::QuasiUpperTriangul
         @show d
         @show d_orig
         nt = size(t, 1)
-        @show d[1:nt] - (I(nt) + 2*alpha*t + (alpha*alpha+beta*beta)*t2)\d_orig[1:n]
+        @show d[1:nt] - (I(nt) + 2*alpha*t + (alpha*alpha+beta*beta)*t2)\d_orig[1:nt]
         @show d
     else
         nd = m*n^(depth-1)
