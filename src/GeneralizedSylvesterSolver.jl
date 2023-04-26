@@ -88,11 +88,17 @@ function solver!(t::QuasiUpperTriangular,s::QuasiUpperTriangular,d::AbstractVect
     d
 end
 
+"""
+function solve1!(r, depth, t, t2, s, s2, d, ws)
+
+solves (I + r*s^T ⊗ s^T ⊗ ... ⊗ s^T ⊗ t)x = d
+where depth is the number of occurences of s^T
+"""
 function solve1!(r::Float64, depth::Int64, t::AbstractArray{Float64,2}, t2::AbstractArray{Float64,2}, s::AbstractArray{Float64,2}, s2::AbstractArray{Float64,2}, d::AbstractVector{Float64}, ws::GeneralizedSylvesterWs)
     m = size(t,2)
     n = size(s,1)
     if depth == 0
-        I_plus_rA_ldiv_B!(r,t,d)
+        I_plus_rA_ldiv_B!(r, t, d)
     else
         nd = m*n^(depth-1)
         nd2 = 2*nd
@@ -102,18 +108,18 @@ function solve1!(r::Float64, depth::Int64, t::AbstractArray{Float64,2}, t2::Abst
         while i <= n
             if i == n || s[i+1,i] == 0
                 dv = view(d,drange1)
-                solve1!(r*s[i,i],depth-1,t,t2,s,s2,dv,ws)
+                solve1!(r*s[i,i], depth-1, t, t2, s, s2, dv, ws)
                 if i < n
-                    solvi_real_eliminate!(i,n,nd,drange1,depth-1,r,t,s,d,ws)
+                    solvi_real_eliminate!(i, n, nd, drange1, depth-1, r, t, s, d, ws)
                 end
                 drange1 = drange1 .+ nd
                 drange2 = drange2 .+ nd
                 i += 1
             else
                 dv = view(d,drange2)
-                solvii(r*s[i,i],r*s[i+1,i],r*s[i,i+1],depth-1,t,t2,s,s2,dv,ws)
+                solvii(r*s[i,i], r*s[i+1,i], r*s[i,i+1], depth-1, t, t2, s, s2, dv, ws)
                 if i < n - 1
-                    solvi_complex_eliminate!(i,n,nd,drange1,depth-1,r,t,s,d,ws)
+                    solvi_complex_eliminate!(i, n, nd, drange1, depth-1, r, t, s, d, ws)
                 end
                 drange1 = drange1 .+ nd2
                 drange2 = drange2 .+ nd2
@@ -167,12 +173,20 @@ function solvi_complex_eliminate!(i::Int64,n::Int64,nd::Int64,drange::UnitRange{
     end 
 end
 
+"""
+function solveii!(alpha, beta1, beta2, depth, t, t2, s, s2, d, ws)
+
+solves (I + G ⊗ s^T ⊗ s^T ⊗ ... ⊗ s^T ⊗ t)x = d
+where depth is the number of occurences of s^T and
+G = [alpha beta1; -beta2 alpha] 
+"""
 function solvii(alpha::Float64,beta1::Float64,beta2::Float64,depth::Int64,
                 t::QuasiUpperTriangular,t2::QuasiUpperTriangular,s::QuasiUpperTriangular,
                 s2::QuasiUpperTriangular,d::AbstractVector,ws::GeneralizedSylvesterWs)
     m = size(t,2)
     n = size(s,1)
     nd = m*n^depth
+    @assert !(beta1*beta2 > 0) "beta1*beta2 is positive"
     transformation1(alpha,beta1,beta2,depth,t,s,d,ws)
     dv = view(d,1:nd)
     solviip(alpha,sqrt(-beta1*beta2),depth,t,t2,s,s2,dv,ws)
@@ -201,28 +215,24 @@ end
 
 diag_zero_sq = 1e-30
 
+"""
+function solveiip!(alpha, beta, depth, t, t2, s, s2, d, ws)
+
+solves (I + 2*alpha*s^T ⊗ s^T ⊗ ... ⊗ s^T ⊗ t
+          + (alpha^2 + beta^2)(s^2)^T ⊗ (s^2)^T ⊗ ... ⊗ (s^2)^T ⊗ t^2)x = d
+where depth is the number of occurences of s^T
+"""
 function solviip(alpha::Float64,beta::Float64,depth::Int64,t::QuasiUpperTriangular,t2::QuasiUpperTriangular,
                  s::QuasiUpperTriangular,s2::QuasiUpperTriangular,d::AbstractVector,ws::GeneralizedSylvesterWs)
     m = size(t,2)
     n = size(s,1)
     if beta*beta < diag_zero_sq
-        @show "OK100"
         solve1!(alpha,depth,t,t2,s,s2,d,ws)
         solve1!(alpha,depth,t,t2,s,s2,d,ws)
         return
     end
-
     if depth == 0
-        @show "OK0"
-        @show size(t), size(d)
-        d_orig = copy(d)
-        @show d
         I_plus_rA_plus_sB_ldiv_C!(2*alpha,alpha*alpha+beta*beta,t,t2,d)
-        @show d
-        @show d_orig
-        nt = size(t, 1)
-        @show d[1:nt] - (I(nt) + 2*alpha*t + (alpha*alpha+beta*beta)*t2)\d_orig[1:nt]
-        @show d
     else
         nd = m*n^(depth-1)
         nd2 = 2*nd
@@ -231,21 +241,19 @@ function solviip(alpha::Float64,beta::Float64,depth::Int64,t::QuasiUpperTriangul
         i = 1
         while i <= n
             if i == n || s[i+1,i] == 0
-                @show "OK1"
                 dv = view(d,drange1)
                 if s[i,i]*s[i,i]*(alpha*alpha+beta*beta) > diag_zero_sq
                     solviip(s[i,i]*alpha,s[i,i]*beta,depth-1,t,t2,s,s2,dv,ws)
                 end
                 if i < n
-                    solviip_real_eliminate!(i,n,nd,drange1,depth-1,alpha,beta,t,t2,s,s2,d,ws)
+                    solviip_real_eliminate!(i,n,nd,drange1,depth - 1,alpha,beta,t,t2,s,s2,d,ws)
                 end
                 drange1 = drange1 .+ nd
                 drange2 = drange2 .+ nd
                 i += 1
             else
-                @show "OK2"
                 dv = view(d,drange2)
-                solviip2(alpha,beta,s[i,i],s[i+1,i],s[i,i+1],depth,t,t2,s,s2,dv,ws)
+                solviip2(alpha,beta,s[i,i],s[i+1,i],s[i,i+1],depth - 1,t,t2,s,s2,dv,ws)
                 if i < n - 1
                     solviip_complex_eliminate!(i,n,nd,drange1,depth-1,alpha,beta,t,t2,s,s2,d,ws)
                 end
@@ -279,6 +287,14 @@ function solviip_real_eliminate!(i::Int64,n::Int64,nd::Int64,drange::UnitRange{I
     end 
 end
 
+"""
+function solveiip2!(alpha, beta, gamma, delta1, delta2, depth, t, t2, s, s2, d, ws)
+
+    solves (I + 2*alpha*G ⊗ s^T ⊗ s^T ⊗ ... ⊗ s^T ⊗ t
+          + (alpha^2 + beta^2)*G^2 ⊗ (s^2)^T ⊗ (s^2)^T ⊗ ... ⊗ (s^2)^T ⊗ t^2)x = d
+where depth is the number of occurences of s^T and
+G = [gamma delta1; -delta2 gammaa] 
+"""
 function solviip2(alpha::Float64,beta::Float64,gamma::Float64,delta1::Float64,delta2::Float64,
                   depth::Int64,t::QuasiUpperTriangular,t2::QuasiUpperTriangular,
                   s::QuasiUpperTriangular,s2::QuasiUpperTriangular,d::AbstractVector,ws::GeneralizedSylvesterWs)
@@ -286,30 +302,35 @@ function solviip2(alpha::Float64,beta::Float64,gamma::Float64,delta1::Float64,de
     n = size(s,1)
     aspds = alpha*alpha + beta*beta
     gspds = gamma*gamma - delta1*delta2
-    nd = m*n^(depth-1)
+    nd = m*n^depth
     dv1 = view(d,1:nd)
     dv2 = view(d,nd+1:2*nd)
-    if aspds*gspds > diag_zero_sq
-        transform2(alpha, beta, gamma, -delta1, -delta2, nd, depth, t, t2, s, s2, d,ws)
+    transform2(alpha, beta, gamma, -delta1, -delta2, nd, depth, t, t2, s, s2, d,ws)
 
-        delta = sqrt(-delta1*delta2)
-	    a1 = alpha*gamma - beta*delta
-	    b1 = alpha*delta + gamma*beta
-	    a2 = alpha*gamma + beta*delta
-	    b2 = alpha*delta - gamma*beta
-	    solviip(a2, b2, depth-1, t, t2, s, s2, dv1, ws);
-	    solviip(a1, b1, depth-1, t, t2, s, s2, dv1, ws);
-        solviip(a2, b2, depth-1, t, t2, s, s2, dv2, ws);
-        solviip(a1, b1, depth-1, t, t2, s, s2, dv2, ws);
-    end
+    delta = sqrt(-delta1*delta2)
+    a1 = alpha*gamma - beta*delta
+    b1 = alpha*delta + gamma*beta
+    a2 = alpha*gamma + beta*delta
+    b2 = alpha*delta - gamma*beta
+    solviip(a2, b2, depth, t, t2, s, s2, dv1, ws);
+    solviip(a1, b1, depth, t, t2, s, s2, dv1, ws);
+    solviip(a2, b2, depth, t, t2, s, s2, dv2, ws);
+    solviip(a1, b1, depth, t, t2, s, s2, dv2, ws);
 end
 
+"""
+function transform2(alpha, beta, gamma, delta1, delta2, nd, depth, t, t2, s, s2, d, ws)
+
+mutates [d1, d2] by computing
+    [d1, d2] = (I + 2*alpha*[gamma -delta1;delta2 gamma] ⊗ ( s^T⊗ s^T ⊗ ... ⊗ s^T ⊗ t) 
+                + (alpha^2 + beta^2)*[gamma -delta1;delta2 gamma]^2 ⊗( s^T⊗ s^T ⊗ ... ⊗ s^T ⊗ t))*[d1; d2]
+"""
 function transform2(alpha::Float64, beta::Float64, gamma::Float64, delta1::Float64, delta2::Float64,
                     nd::Int64, depth::Int64, t::QuasiUpperTriangular, t2::QuasiUpperTriangular,
-                    s::QuasiUpperTriangular, s2::QuasiUpperTriangular, d::AbstractVector, ws::GeneralizedSylvesterWs)
+                    s::QuasiUpperTriangular, s2::QuasiUpperTriangular, d::AbstractVector{Float64}, ws::GeneralizedSylvesterWs)
     d1 = ws.work1
-    kron_at_kron_b_mul_c!(d1,1,s,depth-1,t,d,1,ws.work2,ws.work3,1)
-    kron_at_kron_b_mul_c!(d1,nd+1,s,depth-1,t,d,nd+1,ws.work2,ws.work3,1)
+    kron_at_kron_b_mul_c!(d1,1,s,depth,t,d,1,ws.work2,ws.work3,1)
+    kron_at_kron_b_mul_c!(d1,nd+1,s,depth,t,d,nd+1,ws.work2,ws.work3,1)
 
     m1 = 2*alpha*gamma
     m2 = 2*alpha*delta1
@@ -319,8 +340,8 @@ function transform2(alpha::Float64, beta::Float64, gamma::Float64, delta1::Float
         d1[i+nd] = d[i+nd] + 2*alpha*(delta2*dtmp + gamma*d1[i+nd])
     end
 
-    kron_at_kron_b_mul_c!(d,1,s2,depth-1,t2,d,1,ws.work2,ws.work3,1)
-    kron_at_kron_b_mul_c!(d,nd+1,s2,depth-1,t2,d,nd+1,ws.work2,ws.work3,1)
+    kron_at_kron_b_mul_c!(d,1,s2,depth,t2,d,1,ws.work2,ws.work3,1)
+    kron_at_kron_b_mul_c!(d,nd+1,s2,depth,t2,d,nd+1,ws.work2,ws.work3,1)
     
     aspds = alpha*alpha + beta*beta;
     gspds = gamma*gamma + delta1*delta2;
