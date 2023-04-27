@@ -332,26 +332,25 @@ function transform2(alpha::Float64, beta::Float64, gamma::Float64, delta1::Float
     kron_at_kron_b_mul_c!(d1,1,s,depth,t,d,1,ws.work2,ws.work3,1)
     kron_at_kron_b_mul_c!(d1,nd+1,s,depth,t,d,nd+1,ws.work2,ws.work3,1)
 
+    d2 = ws.work2
+    kron_at_kron_b_mul_c!(d2,1,s2,depth,t2,d,1,ws.work2,ws.work3,1)
+    kron_at_kron_b_mul_c!(d2,nd+1,s2,depth,t2,d,nd+1,ws.work2,ws.work3,1)
+    
     m1 = 2*alpha*gamma
     m2 = 2*alpha*delta1
-    @inbounds @simd for i = 1:nd
-        dtmp = d1[i]
-        d1[i] = d[i] + m1*dtmp + m2*d1[i+nd]
-        d1[i+nd] = d[i+nd] + 2*alpha*(delta2*dtmp + gamma*d1[i+nd])
-    end
-
-    kron_at_kron_b_mul_c!(d,1,s2,depth,t2,d,1,ws.work2,ws.work3,1)
-    kron_at_kron_b_mul_c!(d,nd+1,s2,depth,t2,d,nd+1,ws.work2,ws.work3,1)
-    
+    m3 = 2*alpha*delta2
     aspds = alpha*alpha + beta*beta;
     gspds = gamma*gamma + delta1*delta2;
-    m1 = aspds*gspds
-    m2 = 2*aspds*gamma*delta1
-    m3 = 2*aspds*gamma*delta2
+    m11 = aspds*gspds
+    m22 = 2*aspds*gamma*delta1
+    m33 = 2*aspds*gamma*delta2
     @inbounds @simd for i = 1:nd
-        dtmp = d[i]
-        d[i] = d1[i] + m1*dtmp + m2*d[i+nd]
-        d[i+nd] = d1[i+nd] + m3*dtmp + m1*d[i+nd]
+        d1i = d1[i]
+        d2i = d2[i]
+        d1ind = d1[i+nd]
+        d2ind = d2[i+nd]
+        d[i] +=  m1*d1i + m2*d1ind +  m11*d2i + m22*d2ind
+        d[i+nd] +=  m3*d1i + m1*d1ind + m33*d2i + m11*d2ind
     end
 end
 
