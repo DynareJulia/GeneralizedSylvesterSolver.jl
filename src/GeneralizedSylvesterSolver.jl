@@ -23,6 +23,7 @@ struct GeneralizedSylvesterWs
     work1::Vector{Float64}
     work2::Vector{Float64}
     work3::Vector{Float64}
+    work4::Vector{Float64}
     result::Matrix{Float64}
     linsolve::LUWs
     schur_b::SchurWs
@@ -43,8 +44,9 @@ struct GeneralizedSylvesterWs
         work1 = Vector{Float64}(undef, ma*mc^order)
         work2 = Vector{Float64}(undef, ma*mc^order)
         work3 = Vector{Float64}(undef, ma*mc^order)
+        work4 = Vector{Float64}(undef, ma*mc^order)
         result = Matrix{Float64}(undef, ma,mc^order)
-        new(ma, mb, b1, c1, vs_b, vs_c, s2, t2, work1, work2, work3, result, linsolve, schur_b, schur_c)
+        new(ma, mb, b1, c1, vs_b, vs_c, s2, t2, work1, work2, work3, work4, result, linsolve, schur_b, schur_c)
     end
 end
 
@@ -322,19 +324,19 @@ end
 function transform2(alpha, beta, gamma, delta1, delta2, nd, depth, t, t2, s, s2, d, ws)
 
 mutates [d1, d2] by computing
-    [d1, d2] = (I + 2*alpha*[gamma -delta1;delta2 gamma] ⊗ ( s^T⊗ s^T ⊗ ... ⊗ s^T ⊗ t) 
-                + (alpha^2 + beta^2)*[gamma -delta1;delta2 gamma]^2 ⊗( s^T⊗ s^T ⊗ ... ⊗ s^T ⊗ t))*[d1; d2]
+    [d1, d2] = (I + 2*alpha*[gamma delta1;delta2 gamma] ⊗ ( s^T⊗ s^T ⊗ ... ⊗ s^T ⊗ t) 
+                + (alpha^2 + beta^2)*[gamma delta1;delta2 gamma]^2 ⊗( s^T⊗ s^T ⊗ ... ⊗ s^T ⊗ t))*[d1; d2]
 """
 function transform2(alpha::Float64, beta::Float64, gamma::Float64, delta1::Float64, delta2::Float64,
                     nd::Int64, depth::Int64, t::QuasiUpperTriangular, t2::QuasiUpperTriangular,
                     s::QuasiUpperTriangular, s2::QuasiUpperTriangular, d::AbstractVector{Float64}, ws::GeneralizedSylvesterWs)
     d1 = ws.work1
-    kron_at_kron_b_mul_c!(d1,1,s,depth,t,d,1,ws.work2,ws.work3,1)
-    kron_at_kron_b_mul_c!(d1,nd+1,s,depth,t,d,nd+1,ws.work2,ws.work3,1)
+    kron_at_kron_b_mul_c!(d1,1,s,depth,t,d,1,ws.work3,ws.work4,1)
+    kron_at_kron_b_mul_c!(d1,nd+1,s,depth,t,d,nd+1,ws.work3,ws.work4,1)
 
     d2 = ws.work2
-    kron_at_kron_b_mul_c!(d2,1,s2,depth,t2,d,1,ws.work2,ws.work3,1)
-    kron_at_kron_b_mul_c!(d2,nd+1,s2,depth,t2,d,nd+1,ws.work2,ws.work3,1)
+    kron_at_kron_b_mul_c!(d2,1,s2,depth,t2,d,1,ws.work3,ws.work4,1)
+    kron_at_kron_b_mul_c!(d2,nd+1,s2,depth,t2,d,nd+1,ws.work3,ws.work4,1)
     
     m1 = 2*alpha*gamma
     m2 = 2*alpha*delta1

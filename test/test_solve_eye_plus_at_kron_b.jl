@@ -56,7 +56,7 @@ matrices= [ (sreal, treal),
            ]
 
 
-@testset "Generalized Sylvester Equation $depth, $mat " for depth = 0:1, mat in matrices
+@testset "Generalized Sylvester Equation $depth, $mat " for depth = 0:4, mat in matrices
     s = QuasiUpperTriangular(mat[1])
     t = QuasiUpperTriangular(mat[2])
     s2 = QuasiUpperTriangular(s*s)
@@ -164,7 +164,7 @@ matrices= [ (sreal, treal),
             r2 = randn()
             nd1 = 2*m*n^(depth -1)
             d = copy(d_orig[1:nd1])
-            d_target = (I(2*m*n^(depth - 1)) + 2*r1*kron([a b1; b2 a],kron(kron_power(s', depth -1), t))
+            d_target = (I(nd1) + 2*r1*kron([a b1; b2 a],kron(kron_power(s', depth -1), t))
                         + (r1*r1 + r2*r2)*kron([a b1; b2 a]*[a b1; b2 a], kron(kron_power(s2', depth - 1), t2)))*d
             transform2(r1, r2, a, b1, b2, m*n^(depth - 1), depth - 1, t, t2, s, s2, d, ws)
             @test d ≈ d_target
@@ -233,9 +233,6 @@ depth = 1
 d_orig = randn(n^(depth+1))
 d = copy(d_orig)
 ws = GeneralizedSylvesterWs(n,n,n,depth)
-println("begin test")
-display(s)
-display(t)
 solver!(t,s,d,depth,ws)
 d_target = (I(n^(depth+1)) + kron(s',t))\d_orig
 @test d ≈ d_target
@@ -252,7 +249,6 @@ depth = 3
 d_orig = randn(n^(depth+1))
 d = copy(d_orig)
 ws = GeneralizedSylvesterWs(n,n,n,depth)
-println("begin test")
 solver!(t,s,d,depth,ws)
 d_target = (I(n^(depth+1)) + kron(s',kron(kron(s',s'),t)))\d_orig
 @test d ≈ d_target
@@ -281,7 +277,7 @@ b = randn(n1,n1)
 c = randn(n2,n2)
 depth = 2
 ws = GeneralizedSylvesterWs(n1,n1,n2,depth)
-d = randn(n1,n2^depth)
+d_orig = randn(n1,n2^depth)
 a_orig = copy(a)
 b_orig = copy(b)
 c_orig = copy(c)
