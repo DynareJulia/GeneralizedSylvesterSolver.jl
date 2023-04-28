@@ -54,26 +54,19 @@ function generalized_sylvester_solver!(a::AbstractMatrix,b::AbstractMatrix,c::Ab
                                    d::AbstractMatrix,order::Int64,ws::GeneralizedSylvesterWs)
     copy!(ws.b1,b)
     copy!(ws.c1,c)
-    ws_a = copy(a) # avoid mutating inputs
+    ws_a = copy(a) 
 
-    # linsolve_core!(a, ws.b1, ws.linsolve_ws)
     factors = LinearAlgebra.LU( LAPACK.getrf!(ws.linsolve, ws_a)... )
-    ldiv!(factors, ws.b1) #confirmed
-
-    # linsolve_core_no_lu!(a, d, ws.linsolve_ws)
-    factors = LinearAlgebra.LU( LAPACK.getrf!(ws.linsolve, ws_a)... )
-    ldiv!(factors, d) #confirmed
+    ldiv!(factors, ws.b1)
+    ldiv!(factors, d) 
     
-    # dgees!(ws.dgees_ws_b, ws.b1)
-    Schur(LAPACK.gees!(ws.schur_b, 'V', ws.b1)...) #confirmed
-    # dgees!(ws.dgees_ws_c, ws.c1)
-    Schur(LAPACK.gees!(ws.schur_c, 'V', ws.c1)...) #confirmed
+    Schur(LAPACK.gees!(ws.schur_b, 'V', ws.b1)...)
+    Schur(LAPACK.gees!(ws.schur_c, 'V', ws.c1)...)
 
     t = QuasiUpperTriangular(ws.b1)
-    mul!(ws.t2,t,t) #confirmed
+    mul!(ws.t2,t,t)
     s = QuasiUpperTriangular(ws.c1)
-    mul!(ws.s2,s,s) #confirmed
-    #confirmed as  ws.result = ws.dgees_ws_b.vs' * d * kron(ws.dgees_ws_c.vs, ws.dgees_ws_c.vs)
+    mul!(ws.s2,s,s)
     at_mul_b_kron_c!(ws.result, ws.schur_b.vs, d, ws.schur_c.vs, order, ws.work2, ws.work3)
     copy!(d, ws.result)
 
