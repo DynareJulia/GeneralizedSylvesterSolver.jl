@@ -272,19 +272,33 @@ d_target = (I(n^(depth+1)) + kron(s',kron(kron(s',s'),t)))\d_orig
 
 n1 = 4
 n2 = 3
-a = randn(n1,n1)
-b = randn(n1,n1)
-c = randn(n2,n2)
+a_orig = randn(n1,n1)
+b_orig = randn(n1,n1)
+c_orig = randn(n2,n2)
+
+depth = 1
+ws = GeneralizedSylvesterWs(n1,n1,n2,depth)
+d_orig = randn(n1,n2^depth)
+a = copy(a_orig)
+b = copy(b_orig)
+c = copy(c_orig)
+d = copy(d_orig)
+
+d = reshape(d, 4, 3)
+generalized_sylvester_solver!(a,b,c,d,1,ws)
+@test a_orig*d + b_orig*d*c_orig ≈ d_orig
+@test d ≈ reshape((kron(I(n2^depth),a_orig) + kron(c_orig',b_orig))\vec(d_orig),n1,n2^depth)
+
 depth = 2
 ws = GeneralizedSylvesterWs(n1,n1,n2,depth)
 d_orig = randn(n1,n2^depth)
-a_orig = copy(a)
-b_orig = copy(b)
-c_orig = copy(c)
+a = copy(a_orig)
+b = copy(b_orig)
+c = copy(c_orig)
 d = copy(d_orig)
 
-generalized_sylvester_solver!(a,b,c,d,2,ws)
 d = reshape(d, 4, 9)
+generalized_sylvester_solver!(a,b,c,d,2,ws)
 @test a_orig*d + b_orig*d*kron(c_orig,c_orig) ≈ d_orig
 @test d ≈ reshape((kron(I(n2^depth),a_orig) + kron(kron(c_orig',c_orig'),b_orig))\vec(d_orig),n1,n2^depth)
 
