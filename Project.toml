@@ -1,7 +1,7 @@
 name = "GeneralizedSylvesterSolver"
 uuid = "3b00829b-373b-4a35-afa6-09f888b04ecd"
 authors = ["MichelJuillard <michel.juillard@mjui.fr>"]
-version = "0.2.0"
+version = "0.2.1"
 
 [deps]
 FastLapackInterface = "29a986be-02c6-4525-aec4-84b980013641"
@@ -11,6 +11,6 @@ QuasiTriangular = "e29349eb-b3c8-4189-b6e7-6b7aca9b1830"
 
 [compat]
 julia = "1.6.3"
-FastLapackInterface = "^1"
+FastLapackInterface = "2.0.0"
 KroneckerTools = "0.2.0"
 QuasiTriangular = "0.2.0"
