@@ -1,3 +1,7 @@
+0.2.1
+=====
+- update to FastLapackInterface v.2.0.0
+
 0.2.0
 =====
 - fix various issues
